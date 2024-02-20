@@ -1,27 +1,118 @@
 ---
-title: "Data Exploration Assignment"
+title: "Data Exploration Assignment Writeup"
 author: "Jeremy Sternlicht"
-format: html
+format: docx
 editor: visual
 ---
 
-## Quarto
+## Introduction
 
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+This analysis investigates the impact of the College Scorecard's release in September 2015 on student interest in U.S. colleges that predominantly grant bachelor's degrees. Specifically, this project aims to answer the research question: did the release of the Scorecard shift student interest to high-earnings colleges relative to low-earnings ones? Utilizing Google Trends data to proxy for student interest and College Scorecard data for graduate earnings, regression analysis is conducted to understand this dynamic.
 
-## Running Code
+## Methodology
 
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+I utilize linear regression models to analyze the standardized search index from Google Trends data. Three models are used in my analysis to address the research question by comparing the results between them. These models are a combined model considering all colleges while adjusting for locale differences and two separate models for colleges categorized as "high earnings" and "low earnings" based on their graduates' median earnings, each model also adjusting for locale variations.
+
+For graphical representation, scatter plots were generated to visualize the trends over time in search interest, with regression lines indicating the trend over time by locale category for each of the three regression models.
+
+## Rationale of Analysis Design
+
+This analysis is designed to answer the research question by directly comparing changes in search interest for "high earnings" and "low earnings" colleges before and after the College Scorecard's release. The decision to segregate the data by earnings category is directly informed by the research question, which seeks to understand whether the Scorecard's release shifted interest towards colleges with higher graduate earnings as opposed to those with lower graduate earnings. For the Scorecard data on graduate earnings, I decided to define "high earnings" colleges as anything where their graduates' median earnings data is above the mean graduate earnings data for all colleges in the dataset. "Low earning" colleges are defined as any colleges whose median earnings data is below the mean earnings data for all colleges in the dataset. The inclusion of locale as a control variable in the regression models and the examination of its interaction with time periods (before and after release of Scorecard data) addresses potential regional variations that could confound the analysis. Additionally, this provides further insight into regional differences in the impact of the release of Scorecard data for the different earnings cat
+
+The decision to produce scatter plots, accompanied by regression lines per locale, provides a visual complement to the regression analysis. This allows for an intuitive understanding of trends over time and across different locales.
+
+## Code
 
 ```{r}
-1 + 1
+# Data Exploration Assignment Part 2
+# Regression Models and Graphs
+
+# Load necessary libraries
+library(tidyverse)
+library(rio)
+library(ggplot2)
+
+# Import the cleaned data from the "Processed Data" directory
+final_filtered_data <- rio::import(file.path("../Processed Data", "final_filtered_data.csv"))
+
+# Regression model with interaction between LOCALE and time_period
+model_combined <- lm(standardized_index ~ time_period * factor(LOCALE), data = final_filtered_data)
+summary(model_combined)
+  
+# Filter for Low Earnings colleges
+low_earnings_data <- final_filtered_data %>%
+  filter(earnings_category == "Low Earnings")
+
+# Regression model with interaction between LOCALE and time_period for Low Earnings colleges
+model_low_earnings_locale_interaction <- lm(standardized_index ~ time_period * factor(LOCALE), data = low_earnings_data)
+summary(model_low_earnings_locale_interaction)
+
+# Filter for High Earnings colleges
+high_earnings_data <- final_filtered_data %>%
+  filter(earnings_category == "High Earnings")
+
+# Regression model with interaction between LOCALE and time_period for High Earnings colleges
+model_high_earnings_locale_interaction <- lm(standardized_index ~ time_period * factor(LOCALE), data = high_earnings_data)
+summary(model_high_earnings_locale_interaction)
 ```
 
-You can add options to executable code like this
+Then scatter plots were generated for each regression model using the following code:
 
 ```{r}
-#| echo: false
-2 * 2
+# Graphing
+# Scatter plot with regression lines for combined dataset
+ggplot(final_filtered_data, aes(x = date, y = standardized_index, color = factor(LOCALE))) +
+  geom_point(alpha = 0.5) + # Adjust alpha for point transparency if needed
+  geom_smooth(method = "lm", se = FALSE) + # Adds a linear regression line without confidence interval
+  scale_color_viridis_d() + # Optional: Use a different color scale for clarity
+  labs(x = "Date", y = "Standardized Index", color = "Locale",
+       title = "Search Interest Over Time by Locale") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Filter for Low Earnings colleges
+low_earnings_data <- final_filtered_data %>%
+  filter(earnings_category == "Low Earnings")
+
+# Scatter plot with regression lines for Low Earnings colleges
+ggplot(low_earnings_data, aes(x = date, y = standardized_index, color = factor(LOCALE))) +
+  geom_point(alpha = 0.5) + # Adjust transparency with alpha
+  geom_smooth(method = "lm", se = FALSE, aes(group = LOCALE)) + # Add regression line for each LOCALE
+  scale_color_viridis_d() + # Use a discrete color scale
+  labs(x = "Date", y = "Standardized Index", color = "Locale",
+       title = "Search Interest Over Time by Locale for Low Earnings Colleges") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "right")
+
+# Filter for High Earnings colleges
+high_earnings_data <- final_filtered_data %>%
+  filter(earnings_category == "High Earnings")
+
+# Scatter plot with regression lines for High Earnings colleges
+ggplot(high_earnings_data, aes(x = date, y = standardized_index, color = factor(LOCALE))) +
+  geom_point(alpha = 0.5) + # Adjust transparency with alpha
+  geom_smooth(method = "lm", se = FALSE, aes(group = LOCALE)) + # Add regression line for each LOCALE
+  scale_color_viridis_d() + # Use a discrete color scale
+  labs(x = "Date", y = "Standardized Index", color = "Locale",
+       title = "Search Interest Over Time by Locale for High Earnings Colleges") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "right")
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+## Results
+
+The analysis conducted across three distinct regression models offers nuanced insights into how the introduction of the College Scorecard influenced Google search interest in colleges, with particular attention to differences between high-earning and low-earning colleges and the impact of locale variations.
+
+The combined model indicates a general decrease in search interest post-Scorecard release, with a significant coefficient for 'time_period' (-0.389935, SE = 0.007862, p \< 2e-16), suggesting a broad decline across all colleges.
+
+The model for "low earnings" colleges further shows the impact of the release of the Scorecard data, showing a slightly more significant decrease in search interest ('time_period' coefficient = -0.410574, SE = 0.010723, p \< 2e-16) compared to the combined model. This suggests that low earnings colleges experienced a slightly steeper decline in Google search interest post-Scorecard release.
+
+Conversely, high earnings colleges exhibited a smaller decrease in search interest ('time_period' coefficient = -0.364223, SE = 0.011506, p \< 2e-16) compared to the combined model, suggesting that the Scorecard's release may have shifted public interest slightly towards these institutions.
+
+## Conclusion
+
+Since the release of the Scorecard data in September 2015, the overall level of student interest in colleges that predominantly grant bachelor's degrees (as measured by Google Trends data) decreased by 0.389935 units of the standardized index. Using this as a benchmark, student interest in “low earnings” colleges decreased by a larger amount, 0.410574 units, since the release of the Scorecard data. In comparison, student interest in "high earnings" colleges only decreased by 0.364223 units since the release of the Scorecard data, which is a lesser amount than the overall decrease of all colleges in this dataset and a significantly lesser amount than the decrease in student interest for "low earnings" colleges. These results come from the ‘time_period’ coefficient in each of the three regression models. Comparing this coefficient across models reveals if the Scorecard possibly had a more substantial impact on one earnings category of colleges over the other, and the results suggest that the release of the Scorecard data may have shifted student interest more towards high-earnings colleges compared to low-earnings ones.
+
+In real world terms, these findings highlight the Scorecard's potential role in shaping perceptions of value in higher education, suggesting that students may increasingly seek out institutions that offer better earnings outcomes and a better return on their educational investment. This analysis underscores the need for further research into the multifaceted factors that influence student interest in specific colleges after the release of public data like the College Scorecard.
+
+Additionally, the statistically significant locale-specific trends observed across all models highlight the importance of geographic context in understanding the impact of public information like the College Scorecard in shaping public interest and behavior concerning college education choices.
